@@ -77,6 +77,29 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
+vector<string>& div_Cmd_line(const char* cmd_line){
+    vector<string> args;
+    int space_count=0;
+    int i=0;
+    string command='', arg='';
+    while(cmd_line[i]!='\0'){
+        if(space_count==0&&cmd_line[i]!=' '){
+            command.append(cmd_line[i]);
+        }
+        else if(space_count>=1&&cmd_line[i]!=' '){
+            arg.append(cmd_line[i]);
+        }
+        if(cmd_line[i]==' '&&space_count>=1) {
+            args.push_back(arg);
+            arg = '';
+        }
+        if(cmd_line[i]==' ') {
+            space_count++;
+        }
+        i++;
+    }
+    return args;
+}
 SmallShell::SmallShell() {
 // TODO: add your implementation
 }

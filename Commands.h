@@ -1,8 +1,6 @@
 #ifndef SMASH_COMMAND_H_
 #define SMASH_COMMAND_H_
-
 #include <vector>
-
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
