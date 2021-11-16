@@ -1,6 +1,13 @@
 #ifndef SMASH_COMMAND_H_
 #define SMASH_COMMAND_H_
 #include <vector>
+#include <string.h>
+#include <unistd.h>
+#include <iostream>
+#include <unistd.h>
+#include <sstream>
+#include <sys/wait.h>
+#include <iomanip>
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
@@ -8,7 +15,7 @@
 class Command {
  public:
     int numArg;
-    string cmdArray[COMMAND_MAX_ARGS];
+    char** cmdArgs;
     Command(const char* cmd_line);
     virtual ~Command();
     virtual void execute() = 0;
@@ -147,9 +154,14 @@ class HeadCommand : public BuiltInCommand {
 
 class SmallShell {
  private:
+    pid_t pidSmash;
   // TODO: Add your data members
-  SmallShell();
+  SmallShell(){
+      setpgrp();
+      pidSmash=getpgrp();
+  }
  public:
+    string prev_dir='';
   Command *CreateCommand(const char* cmd_line);
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
   void operator=(SmallShell const&)  = delete; // disable = operator
@@ -159,9 +171,14 @@ class SmallShell {
     // Instantiated on first use.
     return instance;
   }
+    pid_t getPidSmash(){
+        return pidSmash;
+    }
   ~SmallShell();
   void executeCommand(const char* cmd_line);
   // TODO: add extra methods as needed
 };
+
+
 
 #endif //SMASH_COMMAND_H_

@@ -1,8 +1,10 @@
-#include <unistd.h>
 #include <string.h>
 #include <iostream>
 #include <vector>
+#include <string>
+#include <unistd.h>
 #include <sstream>
+#include <sys/param.h>
 #include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
@@ -35,6 +37,9 @@ string _rtrim(const std::string& s)
 string _trim(const std::string& s)
 {
   return _rtrim(_ltrim(s));
+}
+Command::Command(const char *cmd_line) {
+    numArg=_parseCommandLine(cmd_line, cmdArgs);
 }
 
 int _parseCommandLine(const char* cmd_line, char** args) {
@@ -77,29 +82,7 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
-vector<string>& div_Cmd_line(const char* cmd_line){
-    vector<string> args;
-    int space_count=0;
-    int i=0;
-    string command='', arg='';
-    while(cmd_line[i]!='\0'){
-        if(space_count==0&&cmd_line[i]!=' '){
-            command.append(cmd_line[i]);
-        }
-        else if(space_count>=1&&cmd_line[i]!=' '){
-            arg.append(cmd_line[i]);
-        }
-        if(cmd_line[i]==' '&&space_count>=1) {
-            args.push_back(arg);
-            arg = '';
-        }
-        if(cmd_line[i]==' ') {
-            space_count++;
-        }
-        i++;
-    }
-    return args;
-}
+
 SmallShell::SmallShell() {
 // TODO: add your implementation
 }
@@ -145,20 +128,47 @@ void SmallShell::executeCommand(const char *cmd_line) {
 
 }
 void ChpromptCommand::execute() {
-    if (argNum==0)
+    if (numArg==0)
         ptMessage="smash";
-    if (argNum>=1)
-        ptMessage=cmdArray[1];
+    if (numArg>=1)
+        ptMessage=cmdArgs[0];
 }
 void ShowPidCommand::execute() {
-    SmallShell& newShell= SmallShell::SmallShell().getInstance();
-    std::cout << "smash pid is " << newShell.get
+   pid_t pid=SmallShell::getInstance().getPidSmash();
+   string  pid_str= to_string(pid);
+    std::cout << "smash pid is " << pid_str << endl;
 }
 void pwdCommand::execute(){
-    char buffer[MAX_COMMAND_STR_LNT];
-    SmallShell& newShell= SmallShell::SmallShell().getInstance();
-    newShell.getcwd(buffer,255);
-    std::cout << buffer.c_str()
+    char* buffer;
+    getcwd(buffer);
+    std::cout << buffer.c_str();
 
+}
+void ChangeDirCommand::execute() {
+    char* buffer;
+    getcwd(buffer);
+    string curent_dir=buffer.c_str();
+    if(cmdArgs[1]=='-'){
+        string prev_dir2= SmallShell::getInstance().prev_dir;
+        SmallShell::getInstance().prev_dir=current_dir;
+        chdir(prev_dir2);
+
+    }
+    if(cmdArgs[1]=='..') {
+        int i=0,pos;
+        while(curent_dir[i]!='/0'){
+            if(curent_dir[i]=='/'){
+                pos=i;
+            }
+            i++;
+        }
+        SmallShell::getInstance().prev_dir=current_dir;
+        string short_path=curent_dir.substr(0, pos-1);
+        chdir(short_path);
+    }
+    else{
+        SmallShell::getInstance().prev_dir=current_dir;
+        chdir(cmdArgs[2].c_str());
+    }
 }
 
