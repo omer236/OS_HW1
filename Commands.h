@@ -6,12 +6,14 @@
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
+
 class Command {
-// TODO: Add your data members
  public:
-  Command(const char* cmd_line);
-  virtual ~Command();
-  virtual void execute() = 0;
+    int numArg;
+    string cmdArray[COMMAND_MAX_ARGS];
+    Command(const char* cmd_line);
+    virtual ~Command();
+    virtual void execute() = 0;
   //virtual void prepare();
   //virtual void cleanup();
   // TODO: Add your extra methods if needed
@@ -54,7 +56,12 @@ class ChangeDirCommand : public BuiltInCommand {
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
-
+class ChpromptCommand : public BuiltInCommand {
+public:
+    ChpromptCommand(const char *cmd_line);
+    virtual ~ChpromptCommand() {}
+    void execute() override;
+};
 class GetCurrDirCommand : public BuiltInCommand {
  public:
   GetCurrDirCommand(const char* cmd_line);
