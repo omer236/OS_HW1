@@ -56,8 +56,10 @@ class RedirectionCommand : public Command {
 };
 
 class ChangeDirCommand : public BuiltInCommand {
-// TODO: Add your data members public:
-  ChangeDirCommand(const char* cmd_line, char** plastPwd);
+// TODO: Add your data members
+char** lastPw;
+public:
+  ChangeDirCommand(const char* cmd_line, char** plastPwd):BuiltInCommand(cmd_line),lastPw(plastPwd){}
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
@@ -69,14 +71,14 @@ public:
 };
 class GetCurrDirCommand : public BuiltInCommand {
  public:
-  GetCurrDirCommand(const char* cmd_line);
+  GetCurrDirCommand(const char* cmd_line): BuiltInCommand(cmd_line){}
   virtual ~GetCurrDirCommand() {}
   void execute() override;
 };
 
 class ShowPidCommand : public BuiltInCommand {
  public:
-  ShowPidCommand(const char* cmd_line);
+  ShowPidCommand(const char* cmd_line): BuiltInCommand(cmd_line){}
   virtual ~ShowPidCommand() {}
   void execute() override;
 };
@@ -155,13 +157,17 @@ class HeadCommand : public BuiltInCommand {
 class SmallShell {
  private:
     pid_t pidSmash;
+    std::string ptMessage="smash";
   // TODO: Add your data members
-  SmallShell(){
-      setpgrp();
-      pidSmash=getpgrp();
-  }
+  SmallShell();
  public:
-    string prev_dir='';
+    void setPt(std::string s){
+        ptMessage=s;
+    }
+    std::string getPt(){
+        return ptMessage;
+    }
+    char* prev_dir=NULL;
   Command *CreateCommand(const char* cmd_line);
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
   void operator=(SmallShell const&)  = delete; // disable = operator

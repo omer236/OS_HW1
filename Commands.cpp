@@ -8,7 +8,7 @@
 #include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
-#define MAX_COMMAND_STR_LNT(255)
+#define WHITESPACE " "
 using namespace std;
 
 #if 0
@@ -38,9 +38,7 @@ string _trim(const std::string& s)
 {
   return _rtrim(_ltrim(s));
 }
-Command::Command(const char *cmd_line) {
-    numArg=_parseCommandLine(cmd_line, cmdArgs);
-}
+
 
 int _parseCommandLine(const char* cmd_line, char** args) {
   FUNC_ENTRY()
@@ -56,8 +54,7 @@ int _parseCommandLine(const char* cmd_line, char** args) {
 
   FUNC_EXIT()
 }
-
-bool _isBackgroundComamnd(const char* cmd_line) {
+bool _isBackgroundCommand(const char* cmd_line) {
   const string str(cmd_line);
   return str[str.find_last_not_of(WHITESPACE)] == '&';
 }
@@ -85,12 +82,29 @@ void _removeBackgroundSign(char* cmd_line) {
 
 SmallShell::SmallShell() {
 // TODO: add your implementation
+    setpgrp();
+    pidSmash=getpgrp();
 }
 
 SmallShell::~SmallShell() {
 // TODO: add your implementation
 }
-
+Command::Command(const char *cmd_line){
+    cmdArgs=new char*[COMMAND_MAX_ARGS+1];
+    int numArgsTemp= _parseCommandLine(cmd_line,cmdArgs);
+    if (!_isBackgroundCommand(cmd_line))
+        numArg=numArgsTemp-1;
+    else {
+        if(*(cmdArgs[numArgsTemp-1])=='&'){
+            numArg=numArgsTemp-2;
+        }
+        else{
+            numArg=numArgsTemp-1;
+        }
+    }
+}
+Command::~Command() {}
+BuiltInCommand::BuiltInCommand(const char *cmd_line):Command(cmd_line){};
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
@@ -104,7 +118,8 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     else if (firstWord.compare("showpid") == 0)
         return new ShowPidCommand(cmd_line);
     else if (firstWord.compare("cd") == 0) {
-        return new ChangeDirCommand(cmd_line);
+        return new ChangeDirCommand(cmd_line,&prev_dir);
+    }/////check againnnnnnn
 	// For example:
 /*
 
@@ -119,6 +134,9 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
+    Command* cmd= CreateCommand(cmd_line);
+    cmd->execute();
+    delete cmd;
   // TODO: Add your implementation here
   // for example:
   // Command* cmd = CreateCommand(cmd_line);
@@ -126,49 +144,64 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
+string retrieveString( char* buf) {
+
+    size_t len = 0;
+    while( (len < 255) && (buf[ len ] != '\0') ) {
+        len++;
+    }
+
+    return string( buf, len );
+
 }
 void ChpromptCommand::execute() {
+    std::string stemp="smash";
     if (numArg==0)
-        ptMessage="smash";
+        SmallShell::getInstance().setPt(stemp);
     if (numArg>=1)
-        ptMessage=cmdArgs[0];
+        SmallShell::getInstance().setPt(retrieveString(cmdArgs[1]));
 }
+
+ChpromptCommand::ChpromptCommand(const char *cmd_line): BuiltInCommand(cmd_line){};
 void ShowPidCommand::execute() {
    pid_t pid=SmallShell::getInstance().getPidSmash();
    string  pid_str= to_string(pid);
     std::cout << "smash pid is " << pid_str << endl;
 }
-void pwdCommand::execute(){
-    char* buffer;
-    getcwd(buffer);
-    std::cout << buffer.c_str();
+
+void GetCurrDirCommand::execute(){
+    char buffer[PATH_MAX];
+    getcwd(buffer,PATH_MAX);
+    std::cout << buffer << "\n";//changed from  b.c_str
 
 }
+
 void ChangeDirCommand::execute() {
-    char* buffer;
-    getcwd(buffer);
-    string curent_dir=buffer.c_str();
-    if(cmdArgs[1]=='-'){
-        string prev_dir2= SmallShell::getInstance().prev_dir;
+    char buffer[PATH_MAX];
+    getcwd(buffer,PATH_MAX);
+    char* current_dir=buffer;//changed from  b.c_str
+    if(*(cmdArgs[1])=='-'){
+        char* prev_dir2= SmallShell::getInstance().prev_dir;
         SmallShell::getInstance().prev_dir=current_dir;
         chdir(prev_dir2);
 
     }
-    if(cmdArgs[1]=='..') {
+    if(cmdArgs[1]=="..") {
         int i=0,pos;
-        while(curent_dir[i]!='/0'){
-            if(curent_dir[i]=='/'){
+        while(current_dir[i]!='/0'){
+            if(current_dir[i]=='/'){
                 pos=i;
             }
             i++;
         }
         SmallShell::getInstance().prev_dir=current_dir;
-        string short_path=curent_dir.substr(0, pos-1);
-        chdir(short_path);
+        string short_path=std::string(current_dir);
+         short_path=short_path.substr(0, pos-1);
+        chdir(short_path.c_str());
     }
     else{
         SmallShell::getInstance().prev_dir=current_dir;
-        chdir(cmdArgs[2].c_str());
+        chdir(cmdArgs[2]);
     }
 }
 
