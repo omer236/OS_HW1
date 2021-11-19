@@ -89,6 +89,7 @@ void JobsList::addJob(Command *cmd, pid_t jobPid, bool isStopped) {
 }
 
 JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs):BuiltInCommand(cmd_line), jobs_vec(jobs_vec){};
+
 void JobsCommand::execute() {
     time_t now = time(nullptr);
     string stopped = "";
@@ -146,19 +147,26 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     else if (firstWord.compare("jobs") == 0) {
         return new JobsCommand(cmd_line, this->jobsList);
     }/////check againnnnnnn
-	// For example:
-/*
-
-
-  else if ...
-  .....
-  else {
-    return new ExternalCommand(cmd_line);
-  }
-  */
   return nullptr;
 }
+KillCommand::KillCommand(const char *cmd_line, JobsList *jobs): BuiltInCommand(cmd_line), jobs_list(jobs){};
 
+JobsList::JobEntry* JobsList::getJobById(int jobId) {
+    for (std::vector<JobsList::JobEntry *>::iterator it = this->jobs_vec.begin(); it != this->jobs_vec.end(); ++it) {
+        if((*it)->jobId==jobId) {
+            return (*it);
+        }
+    }
+    return nullptr;
+}
+void KillCommand::execute() {
+    char* no_makaf=cmdArgs[1]+1;
+    int sig_num=atoi(no_makaf);
+    int jobId= atoi(cmdArgs[2]);
+    int pid=this->jobs_list->getJobById(jobId)->jobId;
+        kill(pid, sig_num);
+        cout << "signal number " << sig_num << "was sent to pid " << pid;
+}
 void SmallShell::executeCommand(const char *cmd_line) {
     Command* cmd= CreateCommand(cmd_line);
     cmd->execute();

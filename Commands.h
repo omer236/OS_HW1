@@ -139,6 +139,7 @@ class JobsCommand : public BuiltInCommand {
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
+    JobsList* jobs_list;
   KillCommand(const char* cmd_line, JobsList* jobs);
   virtual ~KillCommand() {}
   void execute() override;
