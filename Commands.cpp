@@ -79,17 +79,41 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
+JobsList::JobEntry::JobEntry(int jobId, const char *cmd_line, time_t time, int jobPid, bool _isStopped): jobId(jobId), cmd_line(cmd_line), time(time), jobPid(jobPid),
+_isStopped(_isStopped){};
+
+
+void JobsList::addJob(Command *cmd, pid_t jobPid, bool isStopped) {
+    JobsList::JobEntry* newJob= new JobsList::JobEntry(JobsList::maxId+1, cmd->commmand_line, time(nullptr), jobPid, isStopped);
+    JobsList::jobs_vec.push_back(newJob);
+}
+
+JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs):BuiltInCommand(cmd_line), jobs_vec(jobs_vec){};
+void JobsCommand::execute() {
+    time_t now = time(nullptr);
+    string stopped = "";
+    for (std::vector<JobsList::JobEntry*>::iterator it = this->jobs_vec.begin(); it !=  this->jobs_vec.end(); ++it){
+        if ((*it)->_isStopped) {
+            stopped = " (stopped)";
+        }
+    cout << '[' << (*it)->jobId << "] " << (*it)->cmd_line << " : " << (*it)->jobPid << difftime(now, (*it)->time) << " secs"
+         << stopped;
+    stopped = "";
+    }
+}
 
 SmallShell::SmallShell() {
 // TODO: add your implementation
     setpgrp();
     pidSmash=getpgrp();
+    jobsList=new JobsList();
 }
 
 SmallShell::~SmallShell() {
 // TODO: add your implementation
 }
 Command::Command(const char *cmd_line){
+    commmand_line=cmd_line;
     cmdArgs=new char*[COMMAND_MAX_ARGS+1];
     int numArgsTemp= _parseCommandLine(cmd_line,cmdArgs);
     if (!_isBackgroundCommand(cmd_line))
@@ -117,8 +141,10 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         return new GetCurrDirCommand(cmd_line);
     else if (firstWord.compare("showpid") == 0)
         return new ShowPidCommand(cmd_line);
-    else if (firstWord.compare("cd") == 0) {
+    else if (firstWord.compare("cd") == 0)
         return new ChangeDirCommand(cmd_line,&prev_dir);
+    else if (firstWord.compare("jobs") == 0) {
+        return new JobsCommand(cmd_line, this->jobsList);
     }/////check againnnnnnn
 	// For example:
 /*
@@ -168,25 +194,22 @@ void ShowPidCommand::execute() {
    string  pid_str= to_string(pid);
     std::cout << "smash pid is " << pid_str << endl;
 }
-
 void GetCurrDirCommand::execute(){
     char buffer[PATH_MAX];
     getcwd(buffer,PATH_MAX);
     std::cout << buffer << "\n";//changed from  b.c_str
-
 }
-
 void ChangeDirCommand::execute() {
+    SmallShell &smash=SmallShell::getInstance();
     char buffer[PATH_MAX];
     getcwd(buffer,PATH_MAX);
     char* current_dir=buffer;//changed from  b.c_str
     if(*(cmdArgs[1])=='-'){
-        char* prev_dir2= SmallShell::getInstance().prev_dir;
-        SmallShell::getInstance().prev_dir=current_dir;
+        char* prev_dir2= smash.prev_dir;
+        smash.prev_dir=current_dir;
         chdir(prev_dir2);
-
     }
-    if(cmdArgs[1]=="..") {
+    else if(cmdArgs[1]=="..") {
         int i=0,pos;
         while(current_dir[i]!='/0'){
             if(current_dir[i]=='/'){
@@ -194,14 +217,14 @@ void ChangeDirCommand::execute() {
             }
             i++;
         }
-        SmallShell::getInstance().prev_dir=current_dir;
+        smash.prev_dir=current_dir;
         string short_path=std::string(current_dir);
          short_path=short_path.substr(0, pos-1);
         chdir(short_path.c_str());
     }
     else{
-        SmallShell::getInstance().prev_dir=current_dir;
-        chdir(cmdArgs[2]);
+        smash.prev_dir=buffer;
+        chdir(cmdArgs[1]);
     }
 }
 

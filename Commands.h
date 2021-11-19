@@ -8,6 +8,8 @@
 #include <sstream>
 #include <sys/wait.h>
 #include <iomanip>
+#include <time.h>
+
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
@@ -16,6 +18,7 @@ class Command {
  public:
     int numArg;
     char** cmdArgs;
+    const char* commmand_line;
     Command(const char* cmd_line);
     virtual ~Command();
     virtual void execute() = 0;
@@ -97,13 +100,22 @@ class QuitCommand : public BuiltInCommand {
 class JobsList {
  public:
   class JobEntry {
+  public:
+      int jobId;
+      const char* cmd_line;
+      time_t time;
+      int jobPid;
+      bool _isStopped;
+      JobEntry(int jobId,const char* cmd_line,time_t time,int jobPid,bool _isStopped);
+      ~JobEntry()=default;
    // TODO: Add your data members
   };
+    std::vector<JobEntry*> jobs_vec;
+    int maxId;
  // TODO: Add your data members
- public:
-  JobsList();
-  ~JobsList();
-  void addJob(Command* cmd, bool isStopped = false);
+  JobsList()= default;
+  ~JobsList() =default;
+  void addJob(Command* cmd, pid_t jobPid, bool isStopped);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();
@@ -111,12 +123,14 @@ class JobsList {
   void removeJobById(int jobId);
   JobEntry * getLastJob(int* lastJobId);
   JobEntry *getLastStoppedJob(int *jobId);
+
   // TODO: Add extra methods or modify exisitng ones as needed
 };
 
 class JobsCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
+    std::vector<JobsList::JobEntry*> jobs_vec;
   JobsCommand(const char* cmd_line, JobsList* jobs);
   virtual ~JobsCommand() {}
   void execute() override;
@@ -161,6 +175,7 @@ class SmallShell {
   // TODO: Add your data members
   SmallShell();
  public:
+    JobsList* jobsList;
     void setPt(std::string s){
         ptMessage=s;
     }
