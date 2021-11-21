@@ -130,7 +130,7 @@ class JobsList {
 class JobsCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-    std::vector<JobsList::JobEntry*> jobs_vec;
+    JobsList* jobs_list;// why vector? should be Joblist* jobs
   JobsCommand(const char* cmd_line, JobsList* jobs);
   virtual ~JobsCommand() {}
   void execute() override;
@@ -148,6 +148,8 @@ class KillCommand : public BuiltInCommand {
 class ForegroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
+    JobsList* jobs_list; //new
+    const char* fgCommandLine;
   ForegroundCommand(const char* cmd_line, JobsList* jobs);
   virtual ~ForegroundCommand() {}
   void execute() override;
@@ -156,6 +158,8 @@ class ForegroundCommand : public BuiltInCommand {
 class BackgroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
+    JobsList* jobs_list; //new
+    const char* bgCommandLine;
   BackgroundCommand(const char* cmd_line, JobsList* jobs);
   virtual ~BackgroundCommand() {}
   void execute() override;

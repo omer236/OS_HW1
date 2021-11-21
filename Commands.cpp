@@ -22,6 +22,16 @@ using namespace std;
 #define FUNC_EXIT()
 #endif
 
+string retrieveString( char* buf) {
+
+    size_t len = 0;
+    while( (len < 255) && (buf[ len ] != '\0') ) {
+        len++;
+    }
+
+    return string( buf, len );
+
+}
 string _ltrim(const std::string& s)
 {
   size_t start = s.find_first_not_of(WHITESPACE);
@@ -88,12 +98,15 @@ void JobsList::addJob(Command *cmd, pid_t jobPid, bool isStopped) {
     JobsList::jobs_vec.push_back(newJob);
 }
 
-JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs):BuiltInCommand(cmd_line), jobs_vec(jobs_vec){};
+JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs):BuiltInCommand(cmd_line), jobs_list(jobs){};
 
 void JobsCommand::execute() {
+
     time_t now = time(nullptr);
+    SmallShell &smash=SmallShell::getInstance();
+    smash.jobsList->removeFinishedJobs();
     string stopped = "";
-    for (std::vector<JobsList::JobEntry*>::iterator it = this->jobs_vec.begin(); it !=  this->jobs_vec.end(); ++it){
+    for (std::vector<JobsList::JobEntry*>::iterator it =smash.jobsList->jobs_vec.begin(); it !=  smash.jobsList->jobs_vec.end(); ++it){
         if ((*it)->_isStopped) {
             stopped = " (stopped)";
         }
@@ -144,15 +157,28 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         return new ShowPidCommand(cmd_line);
     else if (firstWord.compare("cd") == 0)
         return new ChangeDirCommand(cmd_line,&prev_dir);
-    else if (firstWord.compare("jobs") == 0) {
+    else if (firstWord.compare("jobs") == 0)
         return new JobsCommand(cmd_line, this->jobsList);
-    }/////check againnnnnnn
-  return nullptr;
+    else if (firstWord.compare("kill") == 0)
+            return new KillCommand(cmd_line, this->jobsList);
+    else if (firstWord.compare("fg") == 0)
+        return new ForegroundCommand(cmd_line, this->jobsList);
+    else if (firstWord.compare("bg") == 0)
+        return new BackgroundCommand(cmd_line, this->jobsList);
+     else
+    return nullptr;
 }
 KillCommand::KillCommand(const char *cmd_line, JobsList *jobs): BuiltInCommand(cmd_line), jobs_list(jobs){};
+ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList *jobs): BuiltInCommand(cmd_line),jobs_list(jobs) {//new
+    this->fgCommandLine=cmd_line;
+};
+BackgroundCommand::BackgroundCommand(const char *cmd_line, JobsList *jobs): BuiltInCommand(cmd_line),jobs_list(jobs) {//new
+    this->bgCommandLine=cmd_line;
+};
 
 JobsList::JobEntry* JobsList::getJobById(int jobId) {
-    for (std::vector<JobsList::JobEntry *>::iterator it = this->jobs_vec.begin(); it != this->jobs_vec.end(); ++it) {
+    SmallShell &smash=SmallShell::getInstance();
+    for (std::vector<JobsList::JobEntry *>::iterator it = smash.jobsList->jobs_vec.begin(); it != smash.jobsList->jobs_vec.end(); ++it) {
         if((*it)->jobId==jobId) {
             return (*it);
         }
@@ -160,13 +186,80 @@ JobsList::JobEntry* JobsList::getJobById(int jobId) {
     return nullptr;
 }
 void KillCommand::execute() {
+    SmallShell &smash=SmallShell::getInstance();
     char* no_makaf=cmdArgs[1]+1;
     int sig_num=atoi(no_makaf);
     int jobId= atoi(cmdArgs[2]);
-    int pid=this->jobs_list->getJobById(jobId)->jobId;
+    int pid=smash.jobsList->getJobById(jobId)->jobId;
         kill(pid, sig_num);
         cout << "signal number " << sig_num << "was sent to pid " << pid;
 }
+void ForegroundCommand::execute() {
+        SmallShell &smash=SmallShell::getInstance();
+        if(numArg==0) {
+            JobsList::JobEntry* job=smash.jobsList->jobs_vec.back();
+            if(job== nullptr){
+                perror("smash error:fg:jobs list is empty");
+            }
+            cout << job->cmd_line << " : " << job->jobPid;
+            kill(job->jobPid,SIGCONT);
+            waitpid(job->jobPid,nullptr,WUNTRACED);
+            smash.jobsList->removeJobById(job->jobId);
+        }
+    else if(numArg==1){
+            JobsList::JobEntry* job =smash.jobsList->getJobById(atoi(cmdArgs[1]));
+            if(job== nullptr){
+                //perror(message);
+            }
+            cout << job->cmd_line << " : " << job->jobPid;
+           kill(job->jobPid,SIGCONT);
+            waitpid(job->jobPid,nullptr,WUNTRACED);
+            smash.jobsList->removeJobById(job->jobId);
+        }
+    }
+void BackgroundCommand::execute() {
+    SmallShell &smash=SmallShell::getInstance();
+    if(numArg==0) {
+        JobsList::JobEntry* job=smash.jobsList->jobs_vec.back();
+        if(job== nullptr){
+            perror("smash error:bg:jobs list is empty");
+        }
+        cout << job->cmd_line << " : " << job->jobPid;
+        kill(job->jobPid,SIGCONT);
+        job->_isStopped= false;
+    }
+    else if(numArg==1){
+        JobsList::JobEntry* job =smash.jobsList->getJobById(atoi(cmdArgs[1]));
+        if(job== nullptr){
+            //perror(message);
+        }
+        cout << job->cmd_line << " : " << job->jobPid;
+        kill(job->jobPid,SIGCONT);
+        job->_isStopped= false;
+    }
+}
+ void JobsList::removeJobById(int jobId){
+     if(this->jobs_vec.empty())
+         return;
+     for (std::vector<JobsList::JobEntry*>::iterator it =this->jobs_vec.begin(); it !=this->jobs_vec.end(); ++it) {
+         if (((*it)->jobId) == jobId) {
+             delete (*it);
+             this->jobs_vec.erase((it));
+             if((*it)->jobId==maxId)
+                maxId=this->jobs_vec.back()->jobId;
+         }
+     }
+}
+void JobsList::removeFinishedJobs() {
+     if(this->jobs_vec.empty())
+         return;
+     for (std::vector<JobsList::JobEntry*>::iterator it =this->jobs_vec.begin(); it !=this->jobs_vec.end(); ++it){
+         if(waitpid((*it)->jobPid,nullptr,WNOHANG)>0){
+             JobsList::removeJobById((*it)->jobId);
+         }
+     }
+}
+
 void SmallShell::executeCommand(const char *cmd_line) {
     Command* cmd= CreateCommand(cmd_line);
     cmd->execute();
@@ -178,16 +271,7 @@ void SmallShell::executeCommand(const char *cmd_line) {
   // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
-string retrieveString( char* buf) {
 
-    size_t len = 0;
-    while( (len < 255) && (buf[ len ] != '\0') ) {
-        len++;
-    }
-
-    return string( buf, len );
-
-}
 void ChpromptCommand::execute() {
     std::string stemp="smash";
     if (numArg==0)
