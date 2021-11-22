@@ -89,8 +89,8 @@ void _removeBackgroundSign(char* cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
-JobsList::JobEntry::JobEntry(int jobId, const char *cmd_line, time_t time, int jobPid, bool _isStopped): jobId(jobId), cmd_line(cmd_line), time(time), jobPid(jobPid),
-_isStopped(_isStopped){};
+JobsList::JobEntry::JobEntry(int jobId, const char *cmd_line, time_t time, int jobPid, bool isStopped): jobId(jobId), cmd_line(cmd_line), time(time), jobPid(jobPid),
+isStopped(isStopped){};
 
 
 void JobsList::addJob(Command *cmd, pid_t jobPid, bool isStopped) {
@@ -107,7 +107,7 @@ void JobsCommand::execute() {
     smash.jobsList->removeFinishedJobs();
     string stopped = "";
     for (std::vector<JobsList::JobEntry*>::iterator it =smash.jobsList->jobs_vec.begin(); it !=  smash.jobsList->jobs_vec.end(); ++it){
-        if ((*it)->_isStopped) {
+        if ((*it)->isStopped) {
             stopped = " (stopped)";
         }
     cout << '[' << (*it)->jobId << "] " << (*it)->cmd_line << " : " << (*it)->jobPid << difftime(now, (*it)->time) << " secs"
@@ -217,16 +217,30 @@ void ForegroundCommand::execute() {
             smash.jobsList->removeJobById(job->jobId);
         }
     }
+
+JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
+    if(this->jobs_vec.empty()){
+        return nullptr;
+    }
+    for (std::vector<JobsList::JobEntry *>::iterator it = this->jobs_vec.end(); it != this->jobs_vec.begin(); --it){
+        if((*it)->isStopped) {
+            *jobId=(*it)->jobId;
+            return (*it);
+        }
+    }
+    return nullptr;
+}
 void BackgroundCommand::execute() {
     SmallShell &smash=SmallShell::getInstance();
     if(numArg==0) {
-        JobsList::JobEntry* job=smash.jobsList->jobs_vec.back();
+        int* job_stopped_id= nullptr;
+        JobsList::JobEntry* job=smash.jobsList->getLastStoppedJob(job_stopped_id);
         if(job== nullptr){
             perror("smash error:bg:jobs list is empty");
         }
         cout << job->cmd_line << " : " << job->jobPid;
         kill(job->jobPid,SIGCONT);
-        job->_isStopped= false;
+        job->isStopped= false;
     }
     else if(numArg==1){
         JobsList::JobEntry* job =smash.jobsList->getJobById(atoi(cmdArgs[1]));
@@ -235,9 +249,34 @@ void BackgroundCommand::execute() {
         }
         cout << job->cmd_line << " : " << job->jobPid;
         kill(job->jobPid,SIGCONT);
-        job->_isStopped= false;
+        job->isStopped= false;
     }
 }
+
+void JobsList::killAllJobs() {
+    if(this->jobs_vec.empty()){
+        std::cout << "smash: sending SIGKILL signal to 0 jobs:" << std::endl;
+        return;
+    }
+    std::cout << "smash: sending SIGKILL signal to "<< this->jobs_vec.size() <<" jobs:" << std::endl;
+    for (std::vector<JobsList::JobEntry *>::iterator it = this->jobs_vec.begin(); it != this->jobs_vec.end(); ++it) {
+        std::cout << (*it)->jobPid << " : " << (*it)->cmd_line << std:: endl;
+        kill((*it)->jobPid,SIGKILL);
+    }
+}
+
+QuitCommand::QuitCommand(const char *cmd_line, JobsList *jobs): BuiltInCommand(cmd_line), jobs_list(jobs) {};
+
+void QuitCommand::execute() {
+    SmallShell &smash =SmallShell::getInstance();//
+    smash.jobsList->removeFinishedJobs();
+    if(cmdArgs[1]=="kill"){
+        smash.jobsList->killAllJobs();
+    }
+
+}
+
+
  void JobsList::removeJobById(int jobId){
      if(this->jobs_vec.empty())
          return;
@@ -317,6 +356,28 @@ void ChangeDirCommand::execute() {
     else{
         smash.prev_dir=buffer;
         chdir(cmdArgs[1]);
+    }
+}
+
+ExternalCommand::ExternalCommand(const char *cmd_line): Command(cmd_line) {
+    this->cmd_line=cmd_line;
+};
+
+void ExternalCommand::execute() {
+    SmallShell &smash = SmallShell::getInstance();
+    bool is_background=false;
+    if(_isBackgroundCommand(cmd_line))
+        is_background=true;
+    pid_t pid=fork();
+    if(pid<0){
+        perror("error");/////change
+        return;
+    }
+    if (pid==0){
+        setpgrp();
+        const char* arg[]={"/bin/bash","-c",cmd_line, nullptr};
+        char** arguments=(char **) arg;
+        execv("/bin/bash",arguments);
     }
 }
 
