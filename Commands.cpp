@@ -191,6 +191,12 @@ void KillCommand::execute() {
     int pid=SmallShell::getInstance().jobsList.getJobById(jobId)->jobPid;
         kill(pid, sig_num);
         cout << "signal number " << sig_num << " was sent to pid " << pid << std::endl;
+        if(sig_num==SIGKILL){
+           SmallShell::getInstance().jobsList.removeJobById(jobId);
+        }
+        if(sig_num==SIGSTOP){
+            SmallShell::getInstance().jobsList.getJobById(jobId)->isStopped= true;
+        }
 }
 void ForegroundCommand::execute() {
         SmallShell &smash=SmallShell::getInstance();
@@ -216,29 +222,30 @@ void ForegroundCommand::execute() {
         }
     }
 
-JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId) {
-    if(this->jobs_vec.empty()){
-        return nullptr;
-    }
-    for (std::vector<JobsList::JobEntry *>::iterator it = this->jobs_vec.end(); it != this->jobs_vec.begin(); --it){
-        if((*it)->isStopped) {
-            *jobId=(*it)->jobId;
-            return (*it);
+int getLastStoppedJob() {
+    std::vector<JobsList::JobEntry*>::iterator it =SmallShell::getInstance().jobsList.jobs_vec.begin();
+     int maxJobId=-1;
+    while (it !=SmallShell::getInstance().jobsList.jobs_vec.end()) {
+        if ((*it)->isStopped) {
+            maxJobId = (*it)->jobId;
         }
+        it++;
     }
-    return nullptr;
+    return maxJobId;
 }
 void BackgroundCommand::execute() {
     SmallShell &smash=SmallShell::getInstance();
     if(numArg==0) {
-        int* job_stopped_id= nullptr;
-        JobsList::JobEntry* job=smash.jobsList.getLastStoppedJob(job_stopped_id);
-        if(job== nullptr){
+        int job_stopped_id= getLastStoppedJob();
+        if(smash.jobsList.getJobById(job_stopped_id)== nullptr){
             perror("smash error:bg:jobs list is empty");
         }
-        cout << job->cmd_line << " : " << job->jobPid << std::endl;
-        kill(job->jobPid,SIGCONT);
-        job->isStopped= false;
+        else {
+            cout << smash.jobsList.getJobById(job_stopped_id)->cmd_line << " : "
+                 << smash.jobsList.getJobById(job_stopped_id)->jobPid << std::endl;
+            kill(smash.jobsList.getJobById(job_stopped_id)->jobPid, SIGCONT);
+            smash.jobsList.getJobById(job_stopped_id)->isStopped = false;
+        }
     }
     else if(numArg==1){
         JobsList::JobEntry* job =smash.jobsList.getJobById(atoi(cmdArgs[1]));

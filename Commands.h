@@ -122,7 +122,7 @@ class JobsList {
   void removeFinishedJobs();
   JobEntry * getJobById(int jobId);
   void removeJobById(int jobId);
-  JobEntry *getLastStoppedJob(int *jobId);
+  int getLastStoppedJob();
 
   // TODO: Add extra methods or modify exisitng ones as needed
 };
