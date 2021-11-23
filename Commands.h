@@ -35,7 +35,6 @@ class BuiltInCommand : public Command {
 
 class ExternalCommand : public Command {
  public:
-    const char* cmd_line;
   ExternalCommand(const char* cmd_line);
   virtual ~ExternalCommand() {}
   void execute() override;
@@ -91,11 +90,10 @@ class JobsList;
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members public:
 public:
-  QuitCommand(const char* cmd_line, JobsList* jobs);
+  QuitCommand(const char* cmd_line);
   virtual ~QuitCommand() {}
   void execute() override;
 
-    JobsList *jobs_list;
 };
 
 
@@ -115,7 +113,7 @@ class JobsList {
    // TODO: Add your data members
   };
     std::vector<JobEntry*> jobs_vec;
-    int maxId;
+    int maxId=0;
  // TODO: Add your data members
   JobsList()= default;
   ~JobsList() =default;
@@ -132,8 +130,7 @@ class JobsList {
 class JobsCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-    JobsList* jobs_list;// why vector? should be Joblist* jobs
-  JobsCommand(const char* cmd_line, JobsList* jobs);
+  JobsCommand(const char* cmd_line);
   virtual ~JobsCommand() {}
   void execute() override;
 };
@@ -141,8 +138,7 @@ class JobsCommand : public BuiltInCommand {
 class KillCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-    JobsList* jobs_list;
-  KillCommand(const char* cmd_line, JobsList* jobs);
+  KillCommand(const char* cmd_line);
   virtual ~KillCommand() {}
   void execute() override;
 };
@@ -150,9 +146,8 @@ class KillCommand : public BuiltInCommand {
 class ForegroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-    JobsList* jobs_list; //new
     const char* fgCommandLine;
-  ForegroundCommand(const char* cmd_line, JobsList* jobs);
+  ForegroundCommand(const char* cmd_line);
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
@@ -160,9 +155,8 @@ class ForegroundCommand : public BuiltInCommand {
 class BackgroundCommand : public BuiltInCommand {
  // TODO: Add your data members
  public:
-    JobsList* jobs_list; //new
     const char* bgCommandLine;
-  BackgroundCommand(const char* cmd_line, JobsList* jobs);
+  BackgroundCommand(const char* cmd_line);
   virtual ~BackgroundCommand() {}
   void execute() override;
 };
@@ -182,7 +176,7 @@ class SmallShell {
   // TODO: Add your data members
   SmallShell();
  public:
-    JobsList* jobsList;
+    JobsList jobsList;
     void setPt(std::string s){
         ptMessage=s;
     }
