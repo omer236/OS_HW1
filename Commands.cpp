@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
+#include <fcntl.h>
 #define WHITESPACE " "
 using namespace std;
 
@@ -147,6 +148,8 @@ BuiltInCommand::BuiltInCommand(const char *cmd_line):Command(cmd_line){};
 Command * SmallShell::CreateCommand(const char* cmd_line) {
     string cmd_s = _trim(string(cmd_line));
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+    if(std::string(cmd_line).find(">")!= std::string::npos)
+        return new RedirectionCommand(cmd_line);
     if(firstWord.compare("chprompt")==0)
         return new ChpromptCommand(cmd_line);
     else if (firstWord.compare("pwd") == 0)
@@ -165,6 +168,8 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         return new BackgroundCommand(cmd_line);
     else if (firstWord.compare("quit") == 0)
         return new QuitCommand(cmd_line);
+ //   else if(std::string(cmd_line).find('|'))
+   //     return new PipeCommand(cmd_line);
      else
          return new ExternalCommand(cmd_line);
 }
@@ -263,21 +268,24 @@ void JobsList::killAllJobs() {
         std::cout << "smash: sending SIGKILL signal to 0 jobs:" << std::endl;
         return;
     }
-    for (std::vector<JobsList::JobEntry *>::iterator it = this->jobs_vec.begin(); it != this->jobs_vec.end(); ++it) {
+    std::vector<JobsList::JobEntry*>::iterator it =jobs_vec.begin();
+    while (it !=this->jobs_vec.end()){
         std::cout << (*it)->jobPid << " : " << (*it)->cmd_line << std:: endl;
-        kill((*it)->jobPid,SIGKILL);///if dosent work try to put it out loop
+        kill((*it)->jobPid,SIGKILL);
+            this->jobs_vec.erase((it));
     }
-}
+    }
+
 
 QuitCommand::QuitCommand(const char *cmd_line): BuiltInCommand(cmd_line){};
 
 void QuitCommand::execute() {
     SmallShell::getInstance().jobsList.removeFinishedJobs();
-    if(cmdArgs[1]=="kill"){
+    if(std::string(cmdArgs[1])=="kill"){
         std::cout << "smash: sending SIGKILL signal to "<< SmallShell::getInstance().jobsList.jobs_vec.size() <<" jobs:" << std::endl;
         SmallShell::getInstance().jobsList.killAllJobs();
     }
-
+        exit(0);
 }
 
 
@@ -389,4 +397,19 @@ void ExternalCommand::execute() {
     }
 
 }
+RedirectionCommand::RedirectionCommand(const char *cmd_line): Command(cmd_line) {};
 
+
+void RedirectionCommand::execute() {
+    SmallShell &smash=SmallShell::getInstance();
+    if (std::string(this->commmand_line).find(">>") != std::string::npos) {
+
+    } else {
+        string cmdLine = _trim(this->commmand_line);
+        std::string command = _rtrim(cmdLine.substr(0, cmdLine.find(">")));
+        std::string filename = _ltrim(cmdLine.substr(cmdLine.find(">") + 1));
+        close(1);
+        open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        smash.executeCommand(command.c_str());
+    }
+}
