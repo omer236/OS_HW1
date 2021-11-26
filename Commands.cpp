@@ -150,6 +150,8 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
     string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
     if(std::string(cmd_line).find(">")!= std::string::npos)
         return new RedirectionCommand(cmd_line);
+    else if(std::string(cmd_line).find('|')!= std::string::npos)
+        return new PipeCommand(cmd_line);
     if(firstWord.compare("chprompt")==0)
         return new ChpromptCommand(cmd_line);
     else if (firstWord.compare("pwd") == 0)
@@ -168,8 +170,6 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         return new BackgroundCommand(cmd_line);
     else if (firstWord.compare("quit") == 0)
         return new QuitCommand(cmd_line);
- //   else if(std::string(cmd_line).find('|'))
-   //     return new PipeCommand(cmd_line);
      else
          return new ExternalCommand(cmd_line);
 }
@@ -403,13 +403,63 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line): Command(cmd_line) 
 void RedirectionCommand::execute() {
     SmallShell &smash=SmallShell::getInstance();
     if (std::string(this->commmand_line).find(">>") != std::string::npos) {
-
+        string cmdLine = _trim(this->commmand_line);
+        std::string command = _rtrim(cmdLine.substr(0, cmdLine.find(">>")));
+        _removeBackgroundSign(command);
+        std::string filename = _ltrim(cmdLine.substr(cmdLine.find(">>") + 2));
+        int stdout=dup(1);
+        close(1);
+        if(open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0666)<0){
+            perror("smash error");
+            dup2(stdout, 1);
+            close(stdout);
+            return;
+        }
+        smash.executeCommand(command.c_str());
+        dup2(stdout, 1);
+        close(stdout);
     } else {
         string cmdLine = _trim(this->commmand_line);
         std::string command = _rtrim(cmdLine.substr(0, cmdLine.find(">")));
+        _removeBackgroundSign(command);
         std::string filename = _ltrim(cmdLine.substr(cmdLine.find(">") + 1));
         close(1);
-        open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        int stdout=dup(1);
+        if(open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666)<0){
+            perror("smash error");
+            dup2(stdout, 1);
+            close(stdout);
+            return;
+        }
         smash.executeCommand(command.c_str());
+        dup2(stdout, 1);
+        close(stdout);
+    }
+}
+
+PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {};
+
+void PipeCommand::execute() {
+    SmallShell &smash=SmallShell::getInstance();
+    if (std::string(this->commmand_line).find("|&") != std::string::npos) {
+
+    } else {
+        std::string cmdLine= _trim(this->commmand_line);
+        std::string command1 = _rtrim(cmdLine.substr(0, cmdLine.find("|")));
+        std::string command2 = _ltrim(cmdLine.substr(cmdLine.find("|") + 1));
+        _removeBackgroundSign(command1);
+        _removeBackgroundSign(command2);
+        int my_pipe[2];
+        pipe(my_pipe);
+        pid_t pid=fork();
+        if(pid==0){
+            close(my_pipe[0]);
+            dup2()
+            smash.executeCommand(command1.c_str());
+        }
+        else{
+            close(my_pipe[1]);
+            smash.executeCommand(command2.c_str());
+        }
     }
 }
