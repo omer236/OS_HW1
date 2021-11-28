@@ -283,7 +283,7 @@ void JobsList::killAllJobs() {
 
 QuitCommand::QuitCommand(const char *cmd_line): BuiltInCommand(cmd_line){};
 
-void QuitCommand::execute() {
+void QuitCommand::execute() {///// quit without kill isnt working
     SmallShell::getInstance().jobsList.removeFinishedJobs();
     if(std::string(cmdArgs[1])=="kill"){
         std::cout << "smash: sending SIGKILL signal to "<< SmallShell::getInstance().jobsList.jobs_vec.size() <<" jobs:" << std::endl;
@@ -296,13 +296,14 @@ void QuitCommand::execute() {
  void JobsList::removeJobById(int jobId){
      std::vector<JobsList::JobEntry*>::iterator it =jobs_vec.begin();
      while (it !=this->jobs_vec.end()){
-         if((*it)->jobId==jobId){
-             //delete (*it);
+         if((*it)->jobId==jobId) {
              this->jobs_vec.erase((it));
-             return;
-         }else
+             break;
+         }
+         else
              it++ ;
      }
+     this->maxId=this->jobs_vec.back()->jobId;
 }
 void JobsList::removeFinishedJobs() {
     std::vector<JobsList::JobEntry*>::iterator it =jobs_vec.begin();
@@ -313,6 +314,7 @@ void JobsList::removeFinishedJobs() {
          }else
              it++ ;
      }
+     this->maxId=this->jobs_vec.back()->jobId;
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
