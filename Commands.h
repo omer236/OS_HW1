@@ -10,7 +10,7 @@
 #include <iomanip>
 #include <time.h>
 
-#define COMMAND_ARGS_MAX_LENGTH (200)
+
 #define COMMAND_MAX_ARGS (20)
 
 
@@ -176,6 +176,9 @@ class SmallShell {
   // TODO: Add your data members
   SmallShell();
  public:
+    pid_t foreground_pid=-1;
+    const char* command_line;
+    Command* cmd;
     JobsList jobsList;
     void setPt(std::string s){
         ptMessage=s;

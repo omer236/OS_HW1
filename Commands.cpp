@@ -216,6 +216,7 @@ void ForegroundCommand::execute() {
             kill(job->jobPid,SIGCONT);
             waitpid(job->jobPid,nullptr,WUNTRACED);
             smash.jobsList.removeJobById(job->jobId);
+            smash.foreground_pid=job->jobPid;
         }
     else if(numArg==1){////efshar lezamzem
             JobsList::JobEntry* job =smash.jobsList.getJobById(atoi(cmdArgs[1]));
@@ -226,6 +227,7 @@ void ForegroundCommand::execute() {
            kill(job->jobPid,SIGCONT);
             waitpid(job->jobPid,nullptr,WUNTRACED);
             smash.jobsList.removeJobById(job->jobId);
+            smash.foreground_pid=job->jobPid;
         }
     }
 
@@ -315,6 +317,7 @@ void JobsList::removeFinishedJobs() {
 
 void SmallShell::executeCommand(const char *cmd_line) {
     Command* cmd= CreateCommand(cmd_line);
+    SmallShell::getInstance().cmd=cmd;
     cmd->execute();
 
 }
@@ -389,11 +392,13 @@ void ExternalCommand::execute() {
     }
     if(pid>0){
         if(!is_background){
-            waitpid(pid, nullptr,WUNTRACED);/////why wuntraces???????????????
+            SmallShell::getInstance().foreground_pid=pid;
+            waitpid(pid, nullptr,WUNTRACED);
+
         }
         else{
-            Command *cmd=SmallShell::getInstance().CreateCommand(this->commmand_line);
-            SmallShell::getInstance().jobsList.addJob(cmd,pid,false);
+            //Command *cmd=SmallShell::getInstance().CreateCommand(this->commmand_line);
+            SmallShell::getInstance().jobsList.addJob(this,pid,false);
         }
 
     }
@@ -442,8 +447,38 @@ PipeCommand::PipeCommand(const char *cmd_line): Command(cmd_line) {};
 void PipeCommand::execute() {
     SmallShell &smash = SmallShell::getInstance();
     if (std::string(this->commmand_line).find("|&") != std::string::npos) {
+        std::string cmdLine = _trim(this->commmand_line);
+        std::string command1 = _rtrim(cmdLine.substr(0, cmdLine.find("|")));
+        std::string command2 = _ltrim(cmdLine.substr(cmdLine.find("|") + 2));
+        _removeBackgroundSign((char *) command1.c_str());
+        _removeBackgroundSign((char *) command2.c_str());
+        int my_pipe[2];
+        pipe(my_pipe);
+        pid_t pid1=fork();
+        if (pid1 == 0) {
+            setpgrp();
+            dup2(my_pipe[1], 2);
+            close(my_pipe[0]);
+            close(my_pipe[1]);
+            smash.executeCommand(command1.c_str());
+            exit(0);
+        }
+        pid_t pid2=fork();
+        if(pid2==0) {
+            setpgrp();
+            dup2(my_pipe[0], 0);
+            close(my_pipe[1]);
+            close(my_pipe[0]);
+            smash.executeCommand(command2.c_str());
+            exit(0);
+        }
+        close(my_pipe[0]);
+        close(my_pipe[1]);
+        waitpid(pid1, nullptr,WUNTRACED);
+        waitpid(pid2, nullptr,WUNTRACED);
+    }
 
-    } else {
+    else {
         std::string cmdLine = _trim(this->commmand_line);
         std::string command1 = _rtrim(cmdLine.substr(0, cmdLine.find("|")));
         std::string command2 = _ltrim(cmdLine.substr(cmdLine.find("|") + 1));
