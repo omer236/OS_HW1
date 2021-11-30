@@ -32,10 +32,21 @@ class BuiltInCommand : public Command {
   BuiltInCommand(const char* cmd_line);
   virtual ~BuiltInCommand() {}
 };
-
+class TimeOut {
+public:
+    int pid;
+    const char* cmd_line;
+    time_t beginTime;
+    time_t durationTime;
+    TimeOut(const char* cmd_line);
+    ~TimeOut()=default;
+    void execute();
+    // TODO: Add your data members
+};
 class ExternalCommand : public Command {
  public:
   ExternalCommand(const char* cmd_line);
+  void TimeOutExecute(TimeOut* timeOut);
   virtual ~ExternalCommand() {}
   void execute() override;
 };
@@ -169,6 +180,15 @@ class HeadCommand : public BuiltInCommand {
 };
 
 
+class TimeoutCommand:public BuiltInCommand{
+public:
+    TimeoutCommand(const char* cmd_line);
+    virtual ~TimeoutCommand(){};
+    void execute() override;
+};
+
+
+
 class SmallShell {
  private:
     pid_t pidSmash;
@@ -176,6 +196,7 @@ class SmallShell {
   // TODO: Add your data members
   SmallShell();
  public:
+    std::vector<TimeOut*> timeVec;
     pid_t foreground_pid=-1;
     const char* command_line;
     Command* cmd;

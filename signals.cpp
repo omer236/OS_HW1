@@ -25,6 +25,18 @@ void ctrlCHandler(int sig_num) {
 }
 
 void alarmHandler(int sig_num) {
-  // TODO: Add your implementation
-}
+    // TODO: Add your implementation
+    cout << "smash got an alarm" << std::endl;
+    std::vector<TimeOut *>::iterator it = SmallShell::getInstance().timeVec.begin();
+    while (it != SmallShell::getInstance().timeVec.end()) {
+        if (((*it)->beginTime + (*it)->durationTime) >= time(nullptr)) {
 
+            kill((*it)->pid, SIGKILL);
+            cout << "smash: " << (*it)->cmd_line << " timed out" << std::endl;
+            it=SmallShell::getInstance().timeVec.erase(it);
+            break;
+        }
+        it++;
+    }
+    SmallShell::getInstance().jobsList.removeFinishedJobs();
+}

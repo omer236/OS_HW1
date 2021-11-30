@@ -152,6 +152,8 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         return new RedirectionCommand(cmd_line);
     else if(std::string(cmd_line).find('|')!= std::string::npos)
         return new PipeCommand(cmd_line);
+    else if(firstWord.compare("timeout")==0)
+        return new TimeoutCommand(cmd_line);
     else if(firstWord.compare("head")==0)
         return new HeadCommand(cmd_line);
     else if(firstWord.compare("chprompt")==0)
@@ -283,12 +285,13 @@ void JobsList::killAllJobs() {
 
 QuitCommand::QuitCommand(const char *cmd_line): BuiltInCommand(cmd_line){};
 
-void QuitCommand::execute() {///// quit without kill isnt working
+void QuitCommand::execute() {///// free memory !!!!
     SmallShell::getInstance().jobsList.removeFinishedJobs();
-    if(std::string(cmdArgs[1])=="kill"){
+    if(numArg>=1&&std::string(cmdArgs[1])=="kill"){
         std::cout << "smash: sending SIGKILL signal to "<< SmallShell::getInstance().jobsList.jobs_vec.size() <<" jobs:" << std::endl;
         SmallShell::getInstance().jobsList.killAllJobs();
     }
+
         exit(0);
 }
 
@@ -306,6 +309,8 @@ void QuitCommand::execute() {///// quit without kill isnt working
      this->maxId=this->jobs_vec.back()->jobId;
 }
 void JobsList::removeFinishedJobs() {
+    if (JobsList::jobs_vec.empty())
+        return;
     std::vector<JobsList::JobEntry*>::iterator it =jobs_vec.begin();
      while (it !=this->jobs_vec.end()){
          if((kill((*it)->jobPid,0)==0)&&(waitpid((*it)->jobPid, nullptr,WNOHANG))>0){
@@ -537,12 +542,50 @@ void HeadCommand::execute() {
         cout<<std::endl ;
 }
 
+TimeOut::TimeOut(const char *cmd_line):cmd_line(cmd_line){};
+void TimeOut::execute() {
+    ExternalCommand* cmd=new ExternalCommand(cmd_line);
+    cmd->TimeOutExecute(this);
+}
+
+TimeoutCommand::TimeoutCommand(const char *cmd_line): BuiltInCommand(cmd_line){
+};
+void TimeoutCommand::execute() {
+    SmallShell &smash=SmallShell::getInstance();
+    TimeOut *timeout= new TimeOut(commmand_line);
+    timeout->execute();
+    timeout->durationTime=atoi(cmdArgs[1]);
+    timeout->beginTime= time(nullptr);
+    smash.timeVec.push_back(timeout);
+    alarm(timeout->durationTime);
+
+}
+void ExternalCommand::TimeOutExecute(TimeOut* time_out){
+    bool is_background=false;
+    if(_isBackgroundCommand(this->commmand_line))
+        is_background=true;
+    pid_t pid=fork();
+    if(pid<0){
+        perror("error");/////change
+        return;
+    }
+    if (pid==0){
+        setpgrp();
+        _removeBackgroundSign((char*)this->commmand_line);
+        const char* arg[]={"/bin/bash","-c",this->commmand_line, nullptr};
+        char** arguments=(char **) arg;
+        execv("/bin/bash",arguments);
+    }
+    if(pid>0){
+        if(!is_background){
+            time_out->pid=pid;
+            SmallShell::getInstance().foreground_pid=pid;
+            waitpid(pid, nullptr,WUNTRACED);
+
+        }
 
 
+    }
 
-
-
-
-
-
+}
 
