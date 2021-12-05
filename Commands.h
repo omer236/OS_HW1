@@ -116,10 +116,11 @@ class JobsList {
   public:
       int jobId;
       const char* cmd_line;
+      Command* command;
       time_t time;
       int jobPid;
       bool isStopped;
-      JobEntry(int jobId,const char* cmd_line,time_t time,int jobPid,bool isStopped);
+      JobEntry(int jobId,const char* cmd_line, Command * command,time_t time,int jobPid,bool isStopped);
       ~JobEntry()=default;
    // TODO: Add your data members
   };
@@ -198,6 +199,7 @@ class SmallShell {
  public:
     std::vector<TimeOut*> timeVec;
     pid_t foreground_pid=-1;
+    int fg_jobId=-1;
     const char* command_line;
     Command* cmd;
     JobsList jobsList;
