@@ -10,6 +10,8 @@
 #include <iomanip>
 #include "Commands.h"
 #include <fcntl.h>
+#include <signal.h>
+#include "signals.h"
 #define WHITESPACE " "
 using namespace std;
 #if 0
@@ -95,8 +97,8 @@ isStopped(isStopped){};
 
 
 void JobsList::addJob(Command* cmd, pid_t jobPid, bool isStopped) {
-    JobsList::JobEntry* newJob= new JobsList::JobEntry(JobsList::maxId+1, cmd->commmand_line, cmd,time(nullptr), jobPid, isStopped);
-    maxId++;
+    JobsList::JobEntry* newJob= new JobsList::JobEntry(SmallShell::getInstance().maxID+1, cmd->commmand_line, cmd,time(nullptr), jobPid, isStopped);
+    SmallShell::getInstance().maxID++;
     JobsList::jobs_vec.push_back(newJob);
 }
 
@@ -231,17 +233,14 @@ void ForegroundCommand::execute() {
             return;
         }
         JobsList::JobEntry *job = smash.jobsList.jobs_vec.back();
-
         cout << job->cmd_line << " : " << job->jobPid << std::endl;
         if(kill(job->jobPid, SIGCONT)!=0){
             perror("smash error: kill falied");
             return;
         }
-        else{
-            smash.fg_jobId=job->jobId;
-            smash.foreground_pid = job->jobPid;
-            smash.cmd=job->command;
-        }
+        smash.fg_job=job;
+        smash.foreground_pid = job->jobPid;
+        smash.cmd=job->command;
 
         if(waitpid(job->jobPid, nullptr, WUNTRACED)<0){
             perror("smash error: waitpid failed");
@@ -256,11 +255,13 @@ void ForegroundCommand::execute() {
             std::cerr << "smash error: fg: job-id " << cmdArgs[1] << " does not exist" << std::endl;
             return;
         }
+
         cout << job->cmd_line << " : " << job->jobPid << std::endl;
         if(kill(job->jobPid, SIGCONT)!=0){
             perror("smash error: kill falied");
             return;
         }
+        smash.fg_job=job;
         smash.foreground_pid = job->jobPid;
         smash.cmd=job->command;
         if(waitpid(job->jobPid, nullptr, WUNTRACED)<0){
@@ -357,19 +358,21 @@ void QuitCommand::execute() {///// free memory !!!!
 
 
  void JobsList::removeJobById(int jobId){
-     std::vector<JobsList::JobEntry*>::iterator it =jobs_vec.begin();
+
+     std::vector<JobsList::JobEntry*>::iterator it =this->jobs_vec.begin();
      while (it !=this->jobs_vec.end()){
          if((*it)->jobId==jobId) {
              this->jobs_vec.erase((it));
-             break;
-         }
+             break;         }
          else
              it++ ;
      }
-     if(jobs_vec.empty())
-         this->maxId=0;
-     else
-     this->maxId=this->jobs_vec.back()->jobId;
+     if(this->jobs_vec.empty()) {
+         SmallShell::getInstance().maxID=0;
+     }
+     else {
+         SmallShell::getInstance().maxID= this->jobs_vec.back()->jobId;
+     }
 }
 void JobsList::removeFinishedJobs() {
     if (JobsList::jobs_vec.empty())
@@ -383,9 +386,9 @@ void JobsList::removeFinishedJobs() {
              it++ ;
      }
      if(jobs_vec.empty())
-         maxId=0;
+         SmallShell::getInstance().maxID=0;
      else
-     this->maxId=this->jobs_vec.back()->jobId;
+         SmallShell::getInstance().maxID=this->jobs_vec.back()->jobId;
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
@@ -491,6 +494,8 @@ void ExternalCommand::execute() {
     }
     if(pid>0){
         if(!is_background){
+            JobsList::JobEntry* newJob= new JobsList::JobEntry(SmallShell::getInstance().maxID+1, this->commmand_line, this,time(nullptr), pid, false);
+            SmallShell::getInstance().fg_job=newJob;
             SmallShell::getInstance().foreground_pid=pid;
             SmallShell::getInstance().cmd=this;
             if(waitpid(pid, nullptr,WUNTRACED)<0){

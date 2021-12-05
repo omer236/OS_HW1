@@ -198,9 +198,9 @@ class SmallShell {
   SmallShell();
  public:
     std::vector<TimeOut*> timeVec;
-    pid_t foreground_pid=-1;
-    int fg_jobId=-1;
-    const char* command_line;
+    pid_t foreground_pid=0;
+    int maxID=0;
+    JobsList::JobEntry *fg_job;
     Command* cmd;
     JobsList jobsList;
     void setPt(std::string s){

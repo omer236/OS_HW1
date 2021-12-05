@@ -7,16 +7,23 @@ using namespace std;
 
 
 void ctrlZHandler(int sig_num) {
-	// TODO: Add your implementation
+    // TODO: Add your implementation
     SmallShell &smash = SmallShell::getInstance();
-    pid_t fg=smash.foreground_pid;
-    if(fg==0) {
+    pid_t fg = smash.foreground_pid;
+    if (fg == 0) {
         cout << "smash: got ctrl-Z" << std::endl;
         return;
     }
-    cout<<"smash: got ctrl-Z"<<std::endl;
-    JobsList::JobEntry* newJob= new JobsList::JobEntry(smash.fg_jobId, SmallShell::getInstance().cmd->commmand_line, SmallShell::getInstance().cmd,time(nullptr), fg, true);
-    smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+smash.fg_jobId, newJob);
+    cout << "smash: got ctrl-Z" << std::endl;
+    JobsList::JobEntry *newJob = smash.fg_job;
+    newJob->isStopped = true;
+    if(smash.jobsList.maxId==0)
+    smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin(), newJob);
+    else if(smash.jobsList.maxId>0)
+        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+newJob->jobId, newJob);
+    if(newJob->jobId==smash.jobsList.maxId){
+        smash.jobsList.maxId++;
+    }
     kill(fg,SIGSTOP);
     smash.foreground_pid=0;
     smash.cmd= nullptr;
