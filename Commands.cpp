@@ -197,12 +197,28 @@ JobsList::JobEntry* JobsList::getJobById(int jobId) {
     }
     return nullptr;
 }
+bool is_number(const std::string& s)
+{
+    std::string::const_iterator it = s.begin();
+    while (it != s.end() && std::isdigit(*it)) ++it;
+    return !s.empty() && it == s.end();
+}
 void KillCommand::execute() {
     if (numArg != 2)
         std::cerr << "smash error: kill: invalid arguments" << std::endl;
     else if (cmdArgs[1][0] != '-') {
         std::cerr << "smash error: kill: invalid arguments" << std::endl;
-    } else {
+    }
+    else if(!is_number(cmdArgs[1]+1)){
+        std::cerr << "smash error: kill: invalid arguments" << std::endl;
+    }
+    else if(cmdArgs[2][0]=='-'&&!is_number(cmdArgs[2]+1)){
+        std::cerr << "smash error: kill: invalid arguments" << std::endl;
+    }
+    else if(!is_number(cmdArgs[2])&&cmdArgs[2][0]!='-'){
+        std::cerr << "smash error: kill: invalid arguments" << std::endl;
+    }
+    else {
         SmallShell::getInstance().jobsList.removeFinishedJobs();
         char *no_makaf = cmdArgs[1] + 1;
         int sig_num = atoi(no_makaf);
@@ -213,7 +229,7 @@ void KillCommand::execute() {
         }
         int pid = SmallShell::getInstance().jobsList.getJobById(jobId)->jobPid;
         if(kill(pid, sig_num)!=0){
-            perror("smash error: kill falied");
+            perror("smash error: kill failed");
             return;
         }
         cout << "signal number " << sig_num << " was sent to pid " << pid << std::endl;
@@ -334,7 +350,7 @@ void JobsList::killAllJobs() {
     }
     std::vector<JobsList::JobEntry*>::iterator it =jobs_vec.begin();
     while (it !=this->jobs_vec.end()){
-        std::cout << (*it)->jobPid << " : " << (*it)->cmd_line << std:: endl;
+        std::cout << (*it)->jobPid << ": " << (*it)->cmd_line << std:: endl;
         if(kill((*it)->jobPid,SIGKILL)!=0){
             perror("smash error: kill falied");
             return;

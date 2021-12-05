@@ -2,10 +2,13 @@
 #include <signal.h>
 #include "signals.h"
 #include "Commands.h"
+#include <bits/stdc++.h>
 
 using namespace std;
 
-
+bool isIdBigger(JobsList::JobEntry * job1,JobsList::JobEntry * job2 ){
+    return(job1->jobId<job2->jobId);
+}
 void ctrlZHandler(int sig_num) {
     // TODO: Add your implementation
     SmallShell &smash = SmallShell::getInstance();
@@ -17,18 +20,8 @@ void ctrlZHandler(int sig_num) {
     cout << "smash: got ctrl-Z" << std::endl;
     JobsList::JobEntry *newJob = smash.fg_job;
     newJob->isStopped = true;
-    if(smash.maxID==0)
-    smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin(), newJob);
-    else if(smash.maxID>0&&newJob->jobId==-1)
-        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.end(), newJob);
-    else if(smash.maxID>0&&newJob->jobId!=-1&&(newJob->jobId)<smash.maxID)
-        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+newJob->jobId-1, newJob);
-    else if(smash.maxID>0&&newJob->jobId!=-1&&(newJob->jobId)>smash.maxID)
-        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+smash.maxID-1, newJob);
-    else if(smash.maxID>0&&newJob->jobId!=-1&&(newJob->jobId)==smash.maxID){
-        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+smash.maxID-1, newJob);
-        smash.jobsList.maxId++;
-        }
+    smash.jobsList.jobs_vec.push_back(newJob);
+    std::sort(smash.jobsList.jobs_vec.begin(),smash.jobsList.jobs_vec.end(), isIdBigger);
     kill(fg,SIGSTOP);
     smash.foreground_pid=0;
     smash.cmd= nullptr;
