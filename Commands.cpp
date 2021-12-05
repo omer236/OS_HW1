@@ -208,7 +208,7 @@ void KillCommand::execute() {
         int sig_num = atoi(no_makaf);
         int jobId = atoi(cmdArgs[2]);
         if(SmallShell::getInstance().jobsList.getJobById(jobId)==nullptr) {
-            std::cerr << "smash error: kill: job id " << jobId << " does not exist" << std::endl;
+            std::cerr << "smash error: kill: job-id " << jobId << " does not exist" << std::endl;
             return;
         }
         int pid = SmallShell::getInstance().jobsList.getJobById(jobId)->jobPid;
@@ -313,7 +313,7 @@ void BackgroundCommand::execute() {
             return;
         }
         if(job->isStopped==false) {
-            std::cerr << "smash error: bg: jobs-id " << cmdArgs[1] << " is already running in the background"<< std::endl;
+            std::cerr << "smash error: bg: job-id " << cmdArgs[1] << " is already running in the background"<< std::endl;
             return;
         }
         cout << job->cmd_line << " : " << job->jobPid << std::endl;

@@ -114,7 +114,7 @@ class JobsList {
  public:
   class JobEntry {
   public:
-      int jobId;
+      int jobId=-1;
       const char* cmd_line;
       Command* command;
       time_t time;

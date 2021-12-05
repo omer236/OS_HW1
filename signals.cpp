@@ -17,13 +17,18 @@ void ctrlZHandler(int sig_num) {
     cout << "smash: got ctrl-Z" << std::endl;
     JobsList::JobEntry *newJob = smash.fg_job;
     newJob->isStopped = true;
-    if(smash.jobsList.maxId==0)
+    if(smash.maxID==0)
     smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin(), newJob);
-    else if(smash.jobsList.maxId>0)
-        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+newJob->jobId, newJob);
-    if(newJob->jobId==smash.jobsList.maxId){
+    else if(smash.maxID>0&&newJob->jobId==-1)
+        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.end(), newJob);
+    else if(smash.maxID>0&&newJob->jobId!=-1&&(newJob->jobId)<smash.maxID)
+        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+newJob->jobId-1, newJob);
+    else if(smash.maxID>0&&newJob->jobId!=-1&&(newJob->jobId)>smash.maxID)
+        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+smash.maxID-1, newJob);
+    else if(smash.maxID>0&&newJob->jobId!=-1&&(newJob->jobId)==smash.maxID){
+        smash.jobsList.jobs_vec.insert(smash.jobsList.jobs_vec.begin()+smash.maxID-1, newJob);
         smash.jobsList.maxId++;
-    }
+        }
     kill(fg,SIGSTOP);
     smash.foreground_pid=0;
     smash.cmd= nullptr;
