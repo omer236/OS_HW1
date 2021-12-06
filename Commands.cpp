@@ -481,10 +481,13 @@ void ChangeDirCommand::execute() {
                 return;
             }
         } else {
-            smash.prev_dir=current_dir;
+
             if(chdir(cmdArgs[1])!=0){
                 perror("smash error: chdir failed");
                 return;
+            }
+            else{
+                smash.prev_dir=current_dir;
             }
         }
     }
