@@ -71,9 +71,8 @@ class RedirectionCommand : public Command {
 
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members
-char** lastPw;
 public:
-  ChangeDirCommand(const char* cmd_line, char** plastPwd):BuiltInCommand(cmd_line),lastPw(plastPwd){}
+  ChangeDirCommand(const char* cmd_line):BuiltInCommand(cmd_line){}
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
@@ -209,7 +208,7 @@ class SmallShell {
     std::string getPt(){
         return ptMessage;
     }
-    char* prev_dir=NULL;
+    std::string prev_dir="";
   Command *CreateCommand(const char* cmd_line);
   SmallShell(SmallShell const&)      = delete; // disable copy ctor
   void operator=(SmallShell const&)  = delete; // disable = operator

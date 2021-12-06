@@ -18,12 +18,17 @@ void ctrlZHandler(int sig_num) {
         return;
     }
     cout << "smash: got ctrl-Z" << std::endl;
-    JobsList::JobEntry *newJob = smash.fg_job;
-    newJob->isStopped = true;
-    smash.jobsList.jobs_vec.push_back(newJob);
-    std::sort(smash.jobsList.jobs_vec.begin(),smash.jobsList.jobs_vec.end(), isIdBigger);
+    if(smash.fg_job!=nullptr&&fg==smash.fg_job->jobPid) {
+        JobsList::JobEntry *newJob = smash.fg_job;
+        newJob->isStopped = true;
+        smash.jobsList.jobs_vec.push_back(newJob);
+        std::sort(smash.jobsList.jobs_vec.begin(),smash.jobsList.jobs_vec.end(), isIdBigger);
+    }
+    else
+        SmallShell::getInstance().jobsList.addJob(SmallShell::getInstance().cmd,fg,true);
     kill(fg,SIGSTOP);
     smash.foreground_pid=0;
+    smash.fg_job=nullptr;
     smash.cmd= nullptr;
     cout<<"smash: process "<<fg <<" was stopped"<<std::endl;
 }

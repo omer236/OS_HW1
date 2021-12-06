@@ -144,7 +144,7 @@ Command::Command(const char *cmd_line){
         }
     }
 }
-Command::~Command() {}//release cmdargs???
+Command::~Command() {}
 BuiltInCommand::BuiltInCommand(const char *cmd_line):Command(cmd_line){};
 /**
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
@@ -160,15 +160,15 @@ Command * SmallShell::CreateCommand(const char* cmd_line) {
         return new TimeoutCommand(cmd_line);
     else if(firstWord.compare("head")==0)
         return new HeadCommand(cmd_line);
-    else if(firstWord.compare("chprompt")==0)
+    else if(firstWord.compare("chprompt")==0 )
         return new ChpromptCommand(cmd_line);
-    else if (firstWord.compare("pwd") == 0)
+    else if (firstWord.compare("pwd") == 0  || firstWord.compare("pwd&") == 0)
         return new GetCurrDirCommand(cmd_line);
-    else if (firstWord.compare("showpid") == 0)
+    else if (firstWord.compare("showpid") == 0 || firstWord.compare("showpid&") == 0)
         return new ShowPidCommand(cmd_line);
-    else if (firstWord.compare("cd") == 0)
-        return new ChangeDirCommand(cmd_line,&prev_dir);
-    else if (firstWord.compare("jobs") == 0)
+    else if (firstWord.compare("cd") == 0 )
+        return new ChangeDirCommand(cmd_line);
+    else if (firstWord.compare("jobs") == 0 || firstWord.compare("jobs&") == 0)
         return new JobsCommand(cmd_line);
     else if (firstWord.compare("kill") == 0)
             return new KillCommand(cmd_line);
@@ -205,8 +205,8 @@ bool is_number(const std::string& s)
 }
 void KillCommand::execute() {
     if (numArg != 2)
-        std::cerr << "smash error: kill: invalid arguments" << std::endl;
-    else if (cmdArgs[1][0] != '-') {
+       std::cerr << "smash error: kill: invalid arguments" << std::endl;
+   else  if (cmdArgs[1][0] != '-') {
         std::cerr << "smash error: kill: invalid arguments" << std::endl;
     }
     else if(!is_number(cmdArgs[1]+1)){
@@ -236,9 +236,9 @@ void KillCommand::execute() {
         if (sig_num == SIGKILL) {
             SmallShell::getInstance().jobsList.removeJobById(jobId);
         }
-        if (sig_num == SIGSTOP) {
-            SmallShell::getInstance().jobsList.getJobById(jobId)->isStopped = true;
-        }
+        //if (sig_num == SIGSTOP) {
+          //  SmallShell::getInstance().jobsList.getJobById(jobId)->isStopped = true;
+        //}
     }
 }
 void ForegroundCommand::execute() {
@@ -251,7 +251,7 @@ void ForegroundCommand::execute() {
         JobsList::JobEntry *job = smash.jobsList.jobs_vec.back();
         cout << job->cmd_line << " : " << job->jobPid << std::endl;
         if(kill(job->jobPid, SIGCONT)!=0){
-            perror("smash error: kill falied");
+            perror("smash error: kill failed");
             return;
         }
         smash.fg_job=job;
@@ -263,6 +263,7 @@ void ForegroundCommand::execute() {
             return;
         }
         smash.foreground_pid=0;
+        smash.fg_job=nullptr;
         smash.cmd=nullptr;
         smash.jobsList.removeJobById(job->jobId);
     } else if (numArg == 1) {
@@ -274,7 +275,7 @@ void ForegroundCommand::execute() {
 
         cout << job->cmd_line << " : " << job->jobPid << std::endl;
         if(kill(job->jobPid, SIGCONT)!=0){
-            perror("smash error: kill falied");
+            perror("smash error: kill failed");
             return;
         }
         smash.fg_job=job;
@@ -286,6 +287,7 @@ void ForegroundCommand::execute() {
         }
         smash.jobsList.removeJobById(job->jobId);
         smash.foreground_pid=0;
+        smash.fg_job=nullptr;
         smash.cmd=nullptr;
     } else {
         std::cerr << "smash error: fg: invalid arguments" << std::endl;
@@ -316,7 +318,7 @@ void BackgroundCommand::execute() {
             cout << smash.jobsList.getJobById(job_stopped_id)->cmd_line << " : "
                  << smash.jobsList.getJobById(job_stopped_id)->jobPid << std::endl;
             if(kill(smash.jobsList.getJobById(job_stopped_id)->jobPid, SIGCONT)!=0){
-                perror("smash error: kill falied");
+                perror("smash error: kill failed");
                 return;
             }
             smash.jobsList.getJobById(job_stopped_id)->isStopped = false;
@@ -334,7 +336,7 @@ void BackgroundCommand::execute() {
         }
         cout << job->cmd_line << " : " << job->jobPid << std::endl;
         if(kill(job->jobPid,SIGCONT)!=0){
-            perror("smash error: kill falied");
+            perror("smash error: kill failed");
             return;
         }
         job->isStopped= false;
@@ -345,14 +347,13 @@ void BackgroundCommand::execute() {
 
 void JobsList::killAllJobs() {
     if(this->jobs_vec.empty()){
-        std::cout << "smash: sending SIGKILL signal to 0 jobs:" << std::endl;
         return;
     }
     std::vector<JobsList::JobEntry*>::iterator it =jobs_vec.begin();
     while (it !=this->jobs_vec.end()){
         std::cout << (*it)->jobPid << ": " << (*it)->cmd_line << std:: endl;
         if(kill((*it)->jobPid,SIGKILL)!=0){
-            perror("smash error: kill falied");
+            perror("smash error: kill failed");
             return;
         }
             this->jobs_vec.erase((it));
@@ -437,6 +438,7 @@ void GetCurrDirCommand::execute(){
     }
     std::cout << buffer << "\n";//changed from  b.c_str
 }
+
 void ChangeDirCommand::execute() {
     if(numArg==0){
         std::cerr << "smash error: " <<commmand_line<<std::endl;
@@ -451,15 +453,15 @@ void ChangeDirCommand::execute() {
             perror("smash error: getcwd failed");
             return;
         }
-        char *current_dir = buffer;//changed from  b.c_str
+        string current_dir= buffer;
         if (*(cmdArgs[1]) == '-') {
-            if (smash.prev_dir == NULL) {
-                perror("smash error: cd: OLDPWD not set");
+            if (smash.prev_dir=="") {
+                std::cerr<<"smash error: cd: OLDPWD not set"<< std::endl;
                 return;
             }
-            char *prev_dir2 = smash.prev_dir;
+            string prev_dir2 = smash.prev_dir;
             smash.prev_dir = current_dir;
-            if(chdir(prev_dir2)!=0){
+            if(chdir(prev_dir2.c_str())!=0){
                 perror("smash error: chdir failed");
                 return;
             }
@@ -479,7 +481,7 @@ void ChangeDirCommand::execute() {
                 return;
             }
         } else {
-            smash.prev_dir = buffer;
+            smash.prev_dir=current_dir;
             if(chdir(cmdArgs[1])!=0){
                 perror("smash error: chdir failed");
                 return;
@@ -848,4 +850,3 @@ void ExternalCommand::TimeOutExecute(TimeOut* time_out){
     }
 
 }
-
